@@ -1,0 +1,170 @@
+alloy:
+  stabilityLevel: "public-preview"
+  securityContext:
+    privileged: true
+  configMap:
+    create: true
+    content: |-
+      beyla.ebpf "default" {
+        debug = false
+        attributes {
+          kubernetes {
+            cluster_name = "demo"
+            enable       = "true"
+          }
+        }
+
+        discovery {
+          services {
+            kubernetes {
+              pod_labels = {
+                instrument = "beyla",
+              }
+            }
+          }
+        }
+
+        metrics {
+          features = ["application"]
+        }
+
+        output {
+          traces = [otelcol.processor.batch.tempo.input]
+        }
+      }
+
+      otelcol.processor.batch "tempo" {
+        output {
+          traces  = [otelcol.exporter.otlp.tempo.input]
+        }
+      }
+
+      otelcol.exporter.otlp "tempo" {
+        client {
+          endpoint = "tempo.observability.svc.cluster.local:4317"
+          tls {
+            insecure = true
+          }
+        }
+      }
+
+      prometheus.scrape "beyla" {
+        job_name = "integrations/beyla"
+        targets      = beyla.ebpf.default.targets
+        honor_labels = true
+        forward_to   = [prometheus.remote_write.prometheus.receiver]
+      }
+
+      discovery.kubernetes "nodes" {
+        role = "node"
+      }
+
+      discovery.relabel "cadvisor" {
+        targets = discovery.kubernetes.nodes.targets
+
+        rule {
+          replacement  = "kubernetes.default.svc:443"
+          target_label = "__address__"
+        }
+
+        rule {
+          regex         = "(.+)"
+          source_labels = ["__meta_kubernetes_node_name"]
+          replacement   = "/api/v1/nodes/$1/proxy/metrics/cadvisor"
+          target_label  = "__metrics_path__"
+        }
+      }
+
+      prometheus.scrape "cadvisor" {
+        job_name = "integrations/kubernetes/cadvisor"
+        targets  = discovery.relabel.cadvisor.output
+        scheme   = "https"
+
+        tls_config {
+          server_name          = "kubernetes"
+          ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+          insecure_skip_verify = false
+        }
+
+        bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        forward_to        = [prometheus.relabel.cadvisor.receiver]
+      }
+
+      prometheus.relabel "cadvisor" {
+        forward_to = [prometheus.remote_write.prometheus.receiver]
+
+        rule {
+          source_labels = ["__name__"]
+          regex         = "container_cpu_usage_seconds_total|container_memory_working_set_bytes"
+          action        = "keep"
+        }
+      }
+
+      prometheus.remote_write "prometheus" {
+        endpoint {
+          url = "http://prometheus-server.observability.svc.cluster.local/api/v1/write"
+        }
+        external_labels = { 
+          cluster = "demo",
+        }
+      }
+
+      discovery.kubernetes "pods_with_logs_enabled" {
+        role = "pod"
+        selectors {
+          role = "pod"
+          label = "logs=loki"
+        }
+      }
+
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods_with_logs_enabled.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          action        = "replace"
+          target_label  = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          action        = "replace"
+          target_label  = "pod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          action        = "replace"
+          target_label  = "container"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          action        = "replace"
+          target_label  = "app"
+        }
+      }
+
+      loki.source.kubernetes "pod_logs" {
+        targets    = discovery.relabel.pod_logs.output
+        forward_to = [loki.process.pod_logs.receiver]
+      }
+
+      loki.process "pod_logs" {
+        stage.static_labels {
+          values = {
+            cluster = "demo",
+          }
+        }
+
+        forward_to = [loki.write.loki.receiver]
+      }
+
+      loki.write "loki" {
+        endpoint {
+          url = "http://loki-gateway.observability.svc.cluster.local/loki/api/v1/push"
+        }
+      }
+
+controller:
+  hostPID: true

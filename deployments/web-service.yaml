@@ -1,0 +1,49 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: web
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: web
+  namespace: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+        instrument: beyla
+        logs: loki
+    spec:
+      containers:
+      - name: web
+        image: sergeij/go-proxy:0.0.1
+        command: 
+          - /proxy
+        args: 
+          - -route=/orders
+          - -backend=http://orders.orders.svc.cluster.local 
+          - -port=8081
+        ports:
+        - containerPort: 8081
+          protocol: TCP
+          name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: web
+spec:
+  selector:
+    app: web
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8081
