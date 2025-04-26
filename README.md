@@ -193,6 +193,5 @@ This sends a continuous stream of requests to the `orders` service, allowing you
 
 Now you're all set to explore the power of Grafana Scenes, Beyla eBPF, and Grafana Alloy in Kubernetes! 🚀
 
-
-https://github.com/user-attachments/assets/b8f98bd0-bc2a-4322-9f0f-244819218f7d
+![hippo](observability.gif)
 
