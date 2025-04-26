@@ -1,5 +1,4 @@
 alloy:
-  stabilityLevel: "public-preview"
   securityContext:
     privileged: true
   configMap:
@@ -22,6 +21,11 @@ alloy:
               }
             }
           }
+        }
+
+        ebpf {
+          track_request_headers = true
+          enable_context_propagation = true
         }
 
         metrics {

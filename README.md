@@ -67,14 +67,14 @@ helm version
 ```sh
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-helm install prometheus prometheus-community/prometheus --version 27.1.0 --namespace observability --create-namespace -f deployments/prometheus.yaml
+helm install prometheus prometheus-community/prometheus --version 27.11.0 --namespace observability --create-namespace -f deployments/prometheus.yaml
 
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
-helm install tempo grafana/tempo --version 1.18.1 --namespace observability -f deployments/tempo.yaml
-helm install loki grafana/loki --version 6.25.0 --namespace observability -f deployments/loki.yaml
-helm install alloy grafana/alloy --version 0.11.0 --namespace observability -f deployments/alloy.yaml
-helm install grafana grafana/grafana --version 8.8.6 --namespace observability -f deployments/grafana.yaml
+helm install tempo grafana/tempo --version 1.18.3 --namespace observability -f deployments/tempo.yaml
+helm install loki grafana/loki --version 6.29.0 --namespace observability -f deployments/loki.yaml
+helm install alloy grafana/alloy --version 1.0.2 --namespace observability -f deployments/alloy.yaml
+helm install grafana grafana/grafana --version 8.13.1 --namespace observability -f deployments/grafana.yaml
 ```
 
 ### 4. Deploy Web and Orders Services
