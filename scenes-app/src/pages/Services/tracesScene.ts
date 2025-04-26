@@ -35,7 +35,7 @@ export function tracesScene(service: string) {
         new SceneFlexItem({
           height: 700,
           body: PanelBuilders.nodegraph()
-            .setTitle('Node graph (upstream)')
+            .setTitle('Node graph (server)')
             .setData(
               new SceneQueryRunner({
                 datasource: TEMPO_DATASOURCE_REF,
@@ -55,7 +55,7 @@ export function tracesScene(service: string) {
         new SceneFlexItem({
           height: 700,
           body: PanelBuilders.nodegraph()
-            .setTitle('Node graph (downstream)')
+            .setTitle('Node graph (client)')
             .setData(
               new SceneQueryRunner({
                 datasource: TEMPO_DATASOURCE_REF,
